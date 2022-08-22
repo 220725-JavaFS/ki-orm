@@ -16,14 +16,15 @@ import com.revature.utils.StringUtil;
 
 public class ObjectMapper {
 	
-	public <T> void insert(T model) {
+	public <U, T extends PrimaryKey<U>> void insert(T model) {
 		try (Connection conn = ConnectionUtil.getConnection()) {
 			Class<?> c = model.getClass();
 			String tableName = c.getSimpleName().toLowerCase() + "s";
 			Field[] fields = c.getDeclaredFields();
-			String questionMarks = "(" + StringUtil.sqlStringHelper(fields.length, "?") + ")";
+			String questionMarks = "(" + StringUtil.sqlStringHelper(fields.length-1, "?") + ")";
 			StringBuilder sql = new StringBuilder("INSERT INTO "+tableName+" (");
 			for (int i=0; i<fields.length; i++) {
+				if (fields[i].getName() == model.pKeyFieldName()) { continue; }
 				sql.append(fields[i].getName());
 				if (i < fields.length-1) {
 					sql.append(", ");
@@ -31,29 +32,27 @@ public class ObjectMapper {
 					sql.append(")");
 				}
 			}
-			sql.append("VALUES " + questionMarks + ";");
+			sql.append(" VALUES " + questionMarks + ";");
 			PreparedStatement statement = conn.prepareStatement(new String(sql));
 			
 			int count = 0;
 			for (Field f: fields) {
+				if (f.getName() == model.pKeyFieldName()) { continue; }
 				String fieldName = f.getName();
-				String fieldGetterName = "get" + fieldName.substring(0,1).toUpperCase() + fieldName.substring(1);
-				try {
-					Method getter = c.getMethod(fieldGetterName);
-					Object value = getter.invoke(model);
-					statement.setString(++count, fieldName);
-					statement.setObject(count+fields.length, value);
-				} catch (NoSuchMethodException | SecurityException | InvocationTargetException | IllegalAccessException e) {
-					e.printStackTrace();
+				String fieldGetterName = "get" + fieldName.substring(0,1).toUpperCase() + 
+						fieldName.substring(1);
+				Method getter = c.getMethod(fieldGetterName);
+				Object value = getter.invoke(model);
+				statement.setObject(++count, value);
 				}
-			}
 			statement.execute();
-		} catch (SQLException e) {
+		} catch (NoSuchMethodException | SecurityException | InvocationTargetException | 
+				IllegalAccessException | SQLException e) {
 			e.printStackTrace();
 		}
 	}
 	
-	public <T> List<T> selectAll(Class<T> c) {
+	public <U, T extends PrimaryKey<U>> List<T> selectAll(Class<T> c) {
 		try (Connection conn = ConnectionUtil.getConnection()) {
 			String tableName = c.getSimpleName().toLowerCase() + "s";
 			String sql = "SELECT * FROM "+tableName+";";
@@ -63,26 +62,20 @@ public class ObjectMapper {
 			
 			while (result.next()) {
 				T row = null;
-				try {
-					row = c.getDeclaredConstructor().newInstance();
-				} catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-					e.printStackTrace();
-				}
+				row = c.getDeclaredConstructor().newInstance();
 				Field[] fields = c.getDeclaredFields();
 				for (Field f: fields) {
 					String fieldName = f.getName();
-					String fieldSetterName = "set" + fieldName.substring(0,1).toUpperCase() + fieldName.substring(1);
-					try {
-						Method setter = c.getMethod(fieldSetterName, f.getType());
-						setter.invoke(row, result.getObject(fieldName));//, f.getType()));
-					} catch (NoSuchMethodException | SecurityException | InvocationTargetException | IllegalAccessException e) {
-						e.printStackTrace();
-					}
+					String fieldSetterName = "set" + fieldName.substring(0,1).toUpperCase() + 
+							fieldName.substring(1);
+					Method setter = c.getMethod(fieldSetterName, f.getType());
+					setter.invoke(row, result.getObject(fieldName));
 				}
 				out.add(row);
 			}
 			return out;
-		} catch (SQLException e) {
+		} catch (SQLException | InstantiationException | IllegalAccessException | InvocationTargetException | 
+				NoSuchMethodException | SecurityException e) {
 			e.printStackTrace();
 		}
 		return null;
@@ -94,15 +87,12 @@ public class ObjectMapper {
 			String tableName = c.getSimpleName().toLowerCase() + "s";
 			String sql = "DELETE FROM "+tableName+" WHERE "+model.pKeyFieldName()+" = ?;";
 			PreparedStatement statement = conn.prepareStatement(sql);
-			try {
-				Method pKeyMethod = c.getDeclaredMethod("pKey");
-				Object value = pKeyMethod.invoke(model);
-				statement.setObject(1, value);
-			} catch (NoSuchMethodException | SecurityException | InvocationTargetException | IllegalAccessException e) {
-				e.printStackTrace();
-			}
+			Method pKeyMethod = c.getDeclaredMethod("pKey");
+			Object value = pKeyMethod.invoke(model);
+			statement.setObject(1, value);
 			statement.execute();
-		} catch (SQLException e) {
+		} catch (SQLException | NoSuchMethodException | SecurityException | InvocationTargetException | 
+				IllegalAccessException e) {
 			e.printStackTrace();
 		}
 	}
@@ -120,30 +110,23 @@ public class ObjectMapper {
 			}
 			sql.append(" WHERE "+current.pKeyFieldName()+" = ?;");
 			PreparedStatement statement = conn.prepareStatement(new String(sql));
-			System.out.println(statement);
 			
 			int count = 0;
 			for (Field f: fields) {
 				String fieldName = f.getName();
-				String fieldGetterName = "get" + fieldName.substring(0,1).toUpperCase() + fieldName.substring(1);
-				try {
-					Method getter = c.getMethod(fieldGetterName);
-					Object value = getter.invoke(updated);
-					statement.setObject(++count, value);
-				} catch (NoSuchMethodException | SecurityException | InvocationTargetException | IllegalAccessException e) {
-					e.printStackTrace();
-				}
+				String fieldGetterName = "get" + fieldName.substring(0,1).toUpperCase() + 
+						fieldName.substring(1);
+				Method getter = c.getMethod(fieldGetterName);
+				Object value = getter.invoke(updated);
+				statement.setObject(++count, value);
 			}
-			try {
-				Method pKeyMethod = c.getDeclaredMethod("pKey");
-				Object pKeyValue = pKeyMethod.invoke(current);
-				statement.setObject(++count, pKeyValue);
-			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				e.printStackTrace();
-			}
-			System.out.println(statement);
+			
+			Method pKeyMethod = c.getDeclaredMethod("pKey");
+			Object pKeyValue = pKeyMethod.invoke(current);
+			statement.setObject(++count, pKeyValue);
 			statement.execute();
-		} catch (SQLException e) {
+		} catch (SQLException | NoSuchMethodException | SecurityException | IllegalAccessException | 
+				IllegalArgumentException | InvocationTargetException e) {
 			e.printStackTrace();
 		}
 	}
