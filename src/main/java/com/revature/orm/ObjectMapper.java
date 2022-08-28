@@ -11,13 +11,16 @@ import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.revature.utils.ConnectionUtil;
-import com.revature.utils.StringUtil;
+import com.revature.orm.utils.Conf;
+import com.revature.orm.utils.ConnectionUtil;
+import com.revature.orm.utils.StringUtil;
 
 public class ObjectMapper {
 	
+	private Conf config;
+	
 	public <U, T extends PrimaryKey<U>> void insert(T model) {
-		try (Connection conn = ConnectionUtil.getConnection()) {
+		try (Connection conn = ConnectionUtil.getConnection(config)) {
 			Class<?> c = model.getClass();
 			String tableName = c.getSimpleName().toLowerCase() + "s";
 			Field[] fields = c.getDeclaredFields();
@@ -53,7 +56,7 @@ public class ObjectMapper {
 	}
 	
 	public <U, T extends PrimaryKey<U>> List<T> selectAll(Class<T> c) {
-		try (Connection conn = ConnectionUtil.getConnection()) {
+		try (Connection conn = ConnectionUtil.getConnection(config)) {
 			String tableName = c.getSimpleName().toLowerCase() + "s";
 			String sql = "SELECT * FROM "+tableName+";";
 			Statement statement = conn.createStatement();
@@ -82,7 +85,7 @@ public class ObjectMapper {
 	}
 	
 	public <U, T extends PrimaryKey<U>> void delete(T model) {
-		try (Connection conn = ConnectionUtil.getConnection()) {
+		try (Connection conn = ConnectionUtil.getConnection(config)) {
 			Class<?> c = model.getClass();
 			String tableName = c.getSimpleName().toLowerCase() + "s";
 			String sql = "DELETE FROM "+tableName+" WHERE "+model.pKeyFieldName()+" = ?;";
@@ -98,7 +101,7 @@ public class ObjectMapper {
 	}
 	
 	public <U, T extends PrimaryKey<U>> void update(T current, T updated) {
-		try (Connection conn = ConnectionUtil.getConnection()) {
+		try (Connection conn = ConnectionUtil.getConnection(config)) {
 			Class<?> c = current.getClass();
 			String tableName = c.getSimpleName().toLowerCase() + "s";
 			Field[] fields = c.getDeclaredFields();
@@ -129,5 +132,10 @@ public class ObjectMapper {
 				IllegalArgumentException | InvocationTargetException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public ObjectMapper(Conf config) {
+		super();
+		this.config = config;
 	}
 }

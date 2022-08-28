@@ -1,4 +1,4 @@
-package com.revature.utils;
+package com.revature.orm.utils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -8,7 +8,7 @@ public class ConnectionUtil {
 
 	private static Connection connection;
 
-	public static Connection getConnection() throws SQLException {
+	public static Connection getConnection(Conf config) throws SQLException {
 		if (connection != null && !connection.isClosed())
 			return connection;
 		else {
@@ -17,12 +17,7 @@ public class ConnectionUtil {
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			}
-
-			String url = "jdbc:postgresql://javafs-220725.cmfrqggyvwnv.us-west-2.rds.amazonaws.com:5432/postgres";
-			String uname = "postgres";
-			String pass = "password";
-
-			connection = DriverManager.getConnection(url, uname, pass);
+			connection = DriverManager.getConnection(config.getUrl(), config.getUname(), config.getPass());
 			return connection;
 		}
 	}

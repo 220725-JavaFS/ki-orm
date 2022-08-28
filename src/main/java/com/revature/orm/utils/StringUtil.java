@@ -1,4 +1,4 @@
-package com.revature.utils;
+package com.revature.orm.utils;
 
 public class StringUtil {
 	
