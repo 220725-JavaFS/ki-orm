@@ -137,5 +137,8 @@ public class ObjectMapper {
 	public ObjectMapper(Conf config) {
 		super();
 		this.config = config;
+		System.out.println(config.getUrl());
+		System.out.println(config.getUname());
+		System.out.println(config.getPass());
 	}
 }
